@@ -19,7 +19,7 @@ import type { BuildEventOptions } from "../@types/calendar";
 export function registerCalendarTools(server: McpServer) {
     // List calendars
     server.registerTool(
-        "list_calendars",
+        "list_icloud-calendars",
         {
             description: "Returns a list of all iCloud calendars.",
             inputSchema: {}
@@ -41,19 +41,18 @@ export function registerCalendarTools(server: McpServer) {
 
     // List calendar events
     server.registerTool(
-        "calendar_list_events",
+        "icloud-calendar_list_events",
         {
             description: "Returns a list of all iCloud calendar events within a specified time range.",
             inputSchema: {
                 from: z.string().describe("Start time as ISO-String (incl. timezone)"),
                 to: z.string().describe("End time as ISO-String (incl. timezone)"),
                 useCalendars: z.union([z.literal("all"), z.array(z.string())])
-                    .optional()
                     .describe("List of calendar URLs to query, or 'all' to use all calendars.")
             }
         },
-        async ({ from, to, useCalendars }: { from: string, to: string, useCalendars?: "all" | string[]}) => {
-            const events = await listEvents(from, to, useCalendars ?? "all"),
+        async ({ from, to, useCalendars }: { from: string, to: string, useCalendars: "all" | string[]}) => {
+            const events = await listEvents(from, to, useCalendars),
                 flatEvents = events.flatMap(({ calendar, events }) =>
                     events.map((ev) => ({
                         eventUrl: ev.url,
@@ -77,7 +76,7 @@ export function registerCalendarTools(server: McpServer) {
 
     // Create calendar event
     server.registerTool(
-        "calendar_create_event",
+        "icloud-calendar_create_event",
         {
             description: "Creates a new iCloud calendar event. Returns the created event's UID and filename.",
             inputSchema: {
@@ -119,7 +118,7 @@ export function registerCalendarTools(server: McpServer) {
 
     // Update calendar event
     server.registerTool(
-        "calendar_update_event",
+        "icloud-calendar_update_event",
         {
             description: "Updates an existing iCloud calendar event by its CalDAV URL.",
             inputSchema: {
@@ -159,7 +158,7 @@ export function registerCalendarTools(server: McpServer) {
 
     // Delete calendar event
     server.registerTool(
-        "calendar_delete_event",
+        "icloud-calendar_delete_event",
         {
             description: "Deletes an existing iCloud calendar event by its CalDAV URL.",
             inputSchema: {
