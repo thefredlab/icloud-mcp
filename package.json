@@ -1,6 +1,6 @@
 {
   "name": "pmcp",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "main": "dist/server.js",
   "license": "MIT",
   "scripts": {
@@ -10,7 +10,7 @@
     "test-local": "ts-node src/test.ts"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.22.0",
+    "@modelcontextprotocol/sdk": "1.25.2",
     "dotenv": "^16.4.0",
     "express": "^5.1.0",
     "tsdav": "^2.0.0",

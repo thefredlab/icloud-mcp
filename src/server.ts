@@ -3,33 +3,59 @@ import dotenv from "dotenv";
 import express from "express";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
-// Import tools
-import { registerCalendarTools } from "./tools/calendar";
+import {PORT, VER, PMCP_ENABLE_CALENDAR, PMCP_ENABLE_CONTACTS, PMCP_ENABLE_AUTH} from "./config";
+
+// Import express tools & middlewares
+import { requestLogger } from "./logger";
+import { securityMiddleware } from "./security";
+
+// Import toolRegister
+import { registerCalendarTools } from "./toolRegister/calendar";
 
 dotenv.config();
 
 // Create server
 const server = new McpServer({
     name: "personal-mcp",
-    version: "0.0.0",
+    version: VER.toString(),
     title: "Personal MCP"
 });
 
-let transports = new Map<string, SSEServerTransport>();
+if (!PMCP_ENABLE_AUTH)
+    console.warn("WARNING! Authentication is disabled. This is not recommended for production use!");
+
+console.log("Checking on tool registration...");
 
 // Register server tools
-registerCalendarTools(server);
+if (PMCP_ENABLE_CALENDAR) {
+    console.log("Registering calendar tools...")
+    registerCalendarTools(server);
+} else
+    console.log("Calendar tools not enabled. Skipping tool registration.");
 
-// Set up streamable HTTP transport
+if (PMCP_ENABLE_CONTACTS) {
+    console.log("Contacts tools enabled but not registered. Tool is under development and not yet available.");
+} else
+    console.log("Contacts tools not enabled. Skipping tool registration.");
+
+console.log("Tool registration finished.");
+
+// Set up server
 async function main() {
     const app = express();
 
+    // Trust Cloudflare Tunnel
+    app.set("trust proxy", true);
+
+    // Log requests
+    app.use(requestLogger);
+    // Check for valid origin, host header and auth token
+    app.use(securityMiddleware);
     app.use(express.json());
 
-    app.post("/mcp", async (req, res) => {
+    app.post("/shttp", async (req, res) => {
         const transport = new StreamableHTTPServerTransport({
             sessionIdGenerator: undefined,
             enableJsonResponse: true,
@@ -43,87 +69,28 @@ async function main() {
         await transport.handleRequest(req, res, req.body);
     });
 
-    // Intentionally use deprecated SSE endpoint for Poke integration
-    app.get("/sse", async (req, res) => {
-        const transport = new SSEServerTransport("/message", res);
-
-        transports.set(transport.sessionId, transport);
-
-        transport.onclose = () => {
-            transports.delete(transport.sessionId);
-        };
-
-        res.on("close", () => {
-            transport.close();
-        });
-
-        await server.connect(transport);
-    });
-
-    app.post("/message", async (req, res) => {
-        const sessionId = req.query.sessionId as string;
-
-        if (!sessionId) {
-            res.status(400).send("No sessionId");
-            return;
-        }
-
-        const transport = transports.get(sessionId);
-
-        if (!transport) {
-            res.status(400).json({
-                jsonrpc: "2.0",
-                error: {
-                    code: -32000,
-                    message: "Bad Request: Unknown or missing MCP session",
-                },
-                id: null,
-            });
-            return;
-        }
-
-        const message = req.body;
-
-        try {
-            await transport.handleMessage(message);
-            res.status(200).end();
-        } catch (err) {
-            console.error("Error in SSE handleMessage:", err);
-            res.status(500).json({
-                jsonrpc: "2.0",
-                error: {
-                    code: -32001,
-                    message: "Internal error while handling SSE message",
-                },
-                id: message?.id ?? null,
-            });
-        }
-    });
+    app.get("/health",(req, res) => res.json({ ok: true }));
 
     app.get("/", (req, res) => {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(
             JSON.stringify({
                 name: "Personal MCP",
-                version: process.env.npm_package_version,
+                version: VER,
                 endpoints: {
                     sse: "/sse",
                     message: "/message",
-                },
-                activeConnections: transports.size,
+                }
             })
         );
     });
 
-    const port = parseInt(process.env.PORT || "8000", 10);
-
-    app.listen(port, () => {
-            console.log(`Personal MCP listens at http://localhost:${port}`);
-        })
-        .on("error", (error) => {
-            console.error("Server error:", error);
-            process.exit(1);
-        });
+    app.listen(PORT, () => {
+        console.log(`Personal MCP listens at http://localhost:${PORT}`);
+    }).on("error", (error) => {
+        console.error("Server error:", error);
+        process.exit(1);
+    });
 }
 
 main().catch((err) => {
