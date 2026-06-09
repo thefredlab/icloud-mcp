@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import { db } from "../managers/database";
 import { decryptPassword } from "../managers/crypto";
 
+import logAndCheckUsage from "../managers/logUsage";
+
 dotenv.config();
 
 export async function getDavClientForUser(pokeUserId: string, server: "caldav" | "carddav" = "caldav") {
@@ -11,6 +13,10 @@ export async function getDavClientForUser(pokeUserId: string, server: "caldav" |
 
     if (!user) {
         throw new Error("USER_NOT_FOUND");
+    }
+
+    if (!await logAndCheckUsage(user.id, user.usageLimit)) {
+        throw new Error("USAGE_LIMIT");
     }
 
     const iCloudConnection = await db("icloud_connections").where({ userId: user.id }).first();

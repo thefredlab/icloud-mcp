@@ -17,6 +17,7 @@ import { mcpContextStorage } from "../managers/context";
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { BuildEventOptions } from "../@types/calendar";
+import catchError from "../managers/catchError";
 
 export function registerCalendarTools(server: McpServer) {
     // List calendars
@@ -45,18 +46,24 @@ export function registerCalendarTools(server: McpServer) {
                 };
             }
 
-            const calendars = await listCalendars(pokeUserId),
-                structuredContent = { calendars };
+            try {
+                const calendars = await listCalendars(pokeUserId),
+                    structuredContent = { calendars };
 
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: JSON.stringify(structuredContent)
-                    }
-                ],
-                structuredContent
-            };
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify(structuredContent)
+                        }
+                    ],
+                    structuredContent
+                };
+            } catch (error) {
+                const checkedError = await catchError(error, pokeUserId);
+
+                return { content: [{ type: "text", text: checkedError.text ?? "Unknown error" }], isError: checkedError.isError };
+            }
         }
     );
 
@@ -93,26 +100,32 @@ export function registerCalendarTools(server: McpServer) {
                 };
             }
 
-            const events = await listEvents(from, to, useCalendars, pokeUserId),
-                flatEvents = events.flatMap(({ calendar, events }) =>
-                    events.map((ev) => ({
-                        eventUrl: ev.url,
-                        calendarUrl: calendar.url,
-                        etag: ev.etag,
-                        iCal: ev.iCal
-                    }))
-                ),
-                structuredContent = { events: flatEvents };
+            try {
+                const events = await listEvents(from, to, useCalendars, pokeUserId),
+                    flatEvents = events.flatMap(({calendar, events}) =>
+                        events.map((ev) => ({
+                            eventUrl: ev.url,
+                            calendarUrl: calendar.url,
+                            etag: ev.etag,
+                            iCal: ev.iCal
+                        }))
+                    ),
+                    structuredContent = {events: flatEvents};
 
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: JSON.stringify(structuredContent)
-                    }
-                ],
-                structuredContent
-            };
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify(structuredContent)
+                        }
+                    ],
+                    structuredContent
+                };
+            } catch (error) {
+                const checkedError = await catchError(error, pokeUserId);
+
+                return { content: [{ type: "text", text: checkedError.text ?? "Unknown error" }], isError: checkedError.isError };
+            }
         }
     );
 
@@ -143,31 +156,37 @@ export function registerCalendarTools(server: McpServer) {
                 };
             }
 
-            const opts: BuildEventOptions = {
-                summary,
-                description,
-                location,
-                start: new Date(start),
-                end: new Date(end)
-            };
+            try {
+                const opts: BuildEventOptions = {
+                    summary,
+                    description,
+                    location,
+                    start: new Date(start),
+                    end: new Date(end)
+                };
 
-            const uid = generateUID(),
-                filename = `${uid}.ics`,
-                iCal = buildSimpleEvent({ ...opts, uid });
+                const uid = generateUID(),
+                    filename = `${uid}.ics`,
+                    iCal = buildSimpleEvent({...opts, uid});
 
-            await createEvent(url, iCal, filename, pokeUserId);
+                await createEvent(url, iCal, filename, pokeUserId);
 
-            const structuredContent = { success: true as const, uid, filename };
+                const structuredContent = {success: true as const, uid, filename};
 
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: JSON.stringify(structuredContent)
-                    }
-                ],
-                structuredContent
-            };
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify(structuredContent)
+                        }
+                    ],
+                    structuredContent
+                };
+            } catch (error) {
+                const checkedError = await catchError(error, pokeUserId);
+
+                return { content: [{ type: "text", text: checkedError.text ?? "Unknown error" }], isError: checkedError.isError };
+            }
         }
     );
 
@@ -197,29 +216,35 @@ export function registerCalendarTools(server: McpServer) {
                 };
             }
 
-            const opts: BuildEventOptions = {
-                summary: summary ?? "No title",
-                description,
-                location,
-                start: start ? new Date(start) : new Date(),
-                end: end ? new Date(end) : new Date(Date.now() + 60 * 60 * 1000)
-            };
+            try {
+                const opts: BuildEventOptions = {
+                    summary: summary ?? "No title",
+                    description,
+                    location,
+                    start: start ? new Date(start) : new Date(),
+                    end: end ? new Date(end) : new Date(Date.now() + 60 * 60 * 1000)
+                };
 
-            const iCal = buildSimpleEvent(opts);
+                const iCal = buildSimpleEvent(opts);
 
-            await updateEvent(url, iCal, pokeUserId, etag);
+                await updateEvent(url, iCal, pokeUserId, etag);
 
-            const structuredContent = { success: true as const };
+                const structuredContent = {success: true as const};
 
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: JSON.stringify(structuredContent)
-                    }
-                ],
-                structuredContent
-            };
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify(structuredContent)
+                        }
+                    ],
+                    structuredContent
+                };
+            } catch (error) {
+                const checkedError = await catchError(error, pokeUserId);
+
+                return { content: [{ type: "text", text: checkedError.text ?? "Unknown error" }], isError: checkedError.isError };
+            }
         }
     );
 
@@ -243,19 +268,25 @@ export function registerCalendarTools(server: McpServer) {
                 };
             }
 
-            await deleteEvent(url, pokeUserId);
+            try {
+                await deleteEvent(url, pokeUserId);
 
-            const structuredContent = { success: true as const };
+                const structuredContent = {success: true as const};
 
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: JSON.stringify(structuredContent)
-                    }
-                ],
-                structuredContent
-            };
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify(structuredContent)
+                        }
+                    ],
+                    structuredContent
+                };
+            } catch (error) {
+                const checkedError = await catchError(error, pokeUserId);
+
+                return { content: [{ type: "text", text: checkedError.text ?? "Unknown error" }], isError: checkedError.isError };
+            }
         }
     );
 }
