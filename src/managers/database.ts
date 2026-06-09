@@ -1,5 +1,6 @@
+import { DB_DATABASE, DB_HOST, DB_PASSWORD, DB_POOL_MAX, DB_USER } from "../config";
+
 import knex from "knex";
-import { DB_DATABASE, DB_HOST, DB_PASSWORD, DB_USER } from "../config";
 
 export const db = knex({
         client: "mysql2",
@@ -11,6 +12,6 @@ export const db = knex({
         },
         pool: {
             min: 0,
-            max: parseInt(process.env.DB_POOL_MAX || "30", 10)
+            max: DB_POOL_MAX
         }
     });

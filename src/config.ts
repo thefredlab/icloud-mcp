@@ -28,7 +28,7 @@ export const DB_HOST = process.env.DB_HOST ?? "";
 export const DB_USER = process.env.DB_USER ?? "";
 export const DB_PASSWORD = process.env.DB_PASSWORD ?? "";
 export const DB_DATABASE = process.env.DB_DATABASE ?? "";
-export const DB_POOL_MAX = process.env.DB_POOL_MAX ?? "";
+export const DB_POOL_MAX = parseInt(process.env.DB_POOL_MAX || "30", 10);
 
 export const ENABLE_CALENDAR = process.env.ENABLE_CALENDAR === "true";
 export const ENABLE_CONTACTS = process.env.ENABLE_CONTACTS === "true";
