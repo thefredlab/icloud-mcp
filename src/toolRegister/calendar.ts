@@ -13,6 +13,8 @@ import {
     generateUID
 } from "../iCloud/iCalBuilder";
 
+import { mcpContextStorage } from "../managers/context";
+
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { BuildEventOptions } from "../@types/calendar";
 
@@ -34,7 +36,16 @@ export function registerCalendarTools(server: McpServer) {
             })
         },
         async () => {
-            const calendars = await listCalendars(),
+            const context = mcpContextStorage.getStore(),
+                pokeUserId = context?.pokeUserId;
+
+            if (!pokeUserId) {
+                return {
+                    content: [{ type: "text" as const, text: "Missing X-Poke-User-Id header." }]
+                };
+            }
+
+            const calendars = await listCalendars(pokeUserId),
                 structuredContent = { calendars };
 
             return {
@@ -73,7 +84,16 @@ export function registerCalendarTools(server: McpServer) {
             })
         },
         async ({from, to, useCalendars}: { from: string; to: string; useCalendars: "all" | string[]; }) => {
-            const events = await listEvents(from, to, useCalendars),
+            const context = mcpContextStorage.getStore(),
+                pokeUserId = context?.pokeUserId;
+
+            if (!pokeUserId) {
+                return {
+                    content: [{ type: "text" as const, text: "Missing X-Poke-User-Id header." }]
+                };
+            }
+
+            const events = await listEvents(from, to, useCalendars, pokeUserId),
                 flatEvents = events.flatMap(({ calendar, events }) =>
                     events.map((ev) => ({
                         eventUrl: ev.url,
@@ -114,6 +134,15 @@ export function registerCalendarTools(server: McpServer) {
             })
         },
         async ({ url, summary, description, location, start, end }) => {
+            const context = mcpContextStorage.getStore(),
+                pokeUserId = context?.pokeUserId;
+
+            if (!pokeUserId) {
+                return {
+                    content: [{ type: "text" as const, text: "Missing X-Poke-User-Id header." }]
+                };
+            }
+
             const opts: BuildEventOptions = {
                 summary,
                 description,
@@ -126,7 +155,7 @@ export function registerCalendarTools(server: McpServer) {
                 filename = `${uid}.ics`,
                 iCal = buildSimpleEvent({ ...opts, uid });
 
-            await createEvent(url, iCal, filename);
+            await createEvent(url, iCal, filename, pokeUserId);
 
             const structuredContent = { success: true as const, uid, filename };
 
@@ -159,6 +188,15 @@ export function registerCalendarTools(server: McpServer) {
             })
         },
         async ({ url, summary, description, location, start, end, etag }) => {
+            const context = mcpContextStorage.getStore(),
+                pokeUserId = context?.pokeUserId;
+
+            if (!pokeUserId) {
+                return {
+                    content: [{ type: "text" as const, text: "Missing X-Poke-User-Id header." }]
+                };
+            }
+
             const opts: BuildEventOptions = {
                 summary: summary ?? "No title",
                 description,
@@ -169,7 +207,7 @@ export function registerCalendarTools(server: McpServer) {
 
             const iCal = buildSimpleEvent(opts);
 
-            await updateEvent(url, iCal, etag);
+            await updateEvent(url, iCal, pokeUserId, etag);
 
             const structuredContent = { success: true as const };
 
@@ -196,7 +234,16 @@ export function registerCalendarTools(server: McpServer) {
             })
         },
         async ({ url }: { url: string }) => {
-            await deleteEvent(url);
+            const context = mcpContextStorage.getStore(),
+                pokeUserId = context?.pokeUserId;
+
+            if (!pokeUserId) {
+                return {
+                    content: [{ type: "text" as const, text: "Missing X-Poke-User-Id header." }]
+                };
+            }
+
+            await deleteEvent(url, pokeUserId);
 
             const structuredContent = { success: true as const };
 

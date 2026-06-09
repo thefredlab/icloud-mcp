@@ -1,22 +1,32 @@
 import { createDAVClient } from "tsdav";
 import dotenv from "dotenv";
 
+import { db } from "../managers/database";
+import { decryptPassword } from "../managers/crypto";
+
 dotenv.config();
 
-const ICLOUD_USERNAME = process.env.ICLOUD_USERNAME;
-const ICLOUD_APP_PASSWORD = process.env.ICLOUD_APP_PASSWORD;
+export async function getDavClientForUser(pokeUserId: string, server: "caldav" | "carddav" = "caldav") {
+    const user = await db("users").where({ pokeUserId }).first();
 
-if (!ICLOUD_USERNAME || !ICLOUD_APP_PASSWORD) {
-    console.error("Missing ICLOUD_USERNAME or ICLOUD_APP_PASSWORD in .env");
-    process.exit(1);
-}
+    if (!user) {
+        throw new Error("USER_NOT_FOUND");
+    }
 
-export async function getDavClient(server: "caldav" | "carddav" = "caldav") {
+    const iCloudConnection = await db("icloud_connections").where({ userId: user.id }).first();
+
+    if (!iCloudConnection) {
+        throw new Error("ICLOUD_NOT_CONNECTED");
+    }
+
+    const plainPassword = decryptPassword(iCloudConnection.encryptedAppPassword, iCloudConnection.iv),
+        appleMail = iCloudConnection.appleMail;
+
     return await createDAVClient({
         serverUrl: server === "caldav" ? "https://caldav.icloud.com" : "https://contacts.icloud.com",
         credentials: {
-            username: ICLOUD_USERNAME,
-            password: ICLOUD_APP_PASSWORD,
+            username: appleMail,
+            password: plainPassword,
         },
         authMethod: "Basic",
         defaultAccountType: server,

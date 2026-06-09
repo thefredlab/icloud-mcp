@@ -6,8 +6,10 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
     // Log after response-completion
     res.on("finish", () => {
         const duration = Date.now() - start,
-            origin = req.headers.origin,
+            userAgent = req.headers["user-agent"],
             host = req.headers.host,
+            origin = req.headers.origin,
+            pokeUserId = req.headers["x-poke-user-id"],
             ip =
                 (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
                 req.socket.remoteAddress ||
@@ -21,7 +23,9 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
             durationMs: duration,
             host,
             origin,
+            userAgent,
             ip: ip.replace("::ffff:", ""),
+            pokeUserId
         };
 
         console.log(JSON.stringify(logEntry));
