@@ -14,7 +14,7 @@ async function fetchAllCalendars(pokeUserId: string, provClient?: Awaited<Return
 }
 
 async function findCalendarByUrl(url: string, pokeUserId: string, client?: Awaited<ReturnType<typeof getDavClientForUser>>): Promise<DAVCalendar | undefined> {
-    return (await fetchAllCalendars(pokeUserId)).find((c) => c.url === url);
+    return (await fetchAllCalendars(pokeUserId, client)).find((c) => c.url === url);
 }
 
 export async function listCalendars(pokeUserId: string, client?: Awaited<ReturnType<typeof getDavClientForUser>>): Promise<PublicCalendar[]> {
