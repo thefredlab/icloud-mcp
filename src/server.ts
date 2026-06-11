@@ -44,6 +44,8 @@ console.log("Tool registration finished.");
 async function main() {
     const app = express();
 
+    let activeTransport: StreamableHTTPServerTransport | null = null;
+
     // Log requests
     app.use(requestLogger);
     // Check for valid origin, host header and auth token
@@ -54,17 +56,27 @@ async function main() {
         const pokeUserId = req.headers["x-poke-user-id"] as string || "";
 
         await mcpContextStorage.run({ pokeUserId }, async () => {
-            const transport = new StreamableHTTPServerTransport({
-                sessionIdGenerator: undefined,
-                enableJsonResponse: true
-            });
+            // If old transport was closed, remove it
+            if (activeTransport && (activeTransport as any).closed)
+                activeTransport = null;
+
+            if (!activeTransport) {
+                activeTransport = new StreamableHTTPServerTransport({
+                    sessionIdGenerator: undefined,
+                    enableJsonResponse: true
+                });
+
+                await server.connect(activeTransport);
+            }
 
             res.on("close", () => {
-                transport.close();
+                if (activeTransport) {
+                    activeTransport.close().catch(() => {});
+                    activeTransport = null;
+                }
             });
 
-            await server.connect(transport);
-            await transport.handleRequest(req, res, req.body);
+            await activeTransport.handleRequest(req, res, req.body);
         });
     });
 
