@@ -44,41 +44,32 @@ console.log("Tool registration finished.");
 async function main() {
     const app = express();
 
-    let activeTransport: StreamableHTTPServerTransport | null = null;
-
     // Log requests
     app.use(requestLogger);
-    // Check for valid origin, host header and auth token
+    // Check for valid origin, host header, and user agent
     app.use(securityMiddleware);
     app.use(express.json());
 
-    app.all("/mcp/shttp", async (req, res) => {
+    const transport = new StreamableHTTPServerTransport({
+        // @ts-ignore
+        endpoint: "/mcp/shttp",
+        enableJsonResponse: true
+    });
+
+    await server.connect(transport);
+
+    // assign poke user id
+    const handleMcpWithContext = async (req: express.Request, res: express.Response) => {
         const pokeUserId = req.headers["x-poke-user-id"] as string || "";
 
         await mcpContextStorage.run({ pokeUserId }, async () => {
-            // If old transport was closed, remove it
-            if (activeTransport && (activeTransport as any).closed)
-                activeTransport = null;
-
-            if (!activeTransport) {
-                activeTransport = new StreamableHTTPServerTransport({
-                    sessionIdGenerator: undefined,
-                    enableJsonResponse: true
-                });
-
-                await server.connect(activeTransport);
-            }
-
-            res.on("close", () => {
-                if (activeTransport) {
-                    activeTransport.close().catch(() => {});
-                    activeTransport = null;
-                }
-            });
-
-            await activeTransport.handleRequest(req, res, req.body);
+            await transport.handleRequest(req, res, req.body);
         });
-    });
+    };
+
+    // Register shttp routes and assign context (poke user id)
+    app.all("/mcp/shttp", handleMcpWithContext);
+    app.all("/mcp/shttp/*", handleMcpWithContext);
 
     app.get("/mcp/health",(req, res) => res.json({ ok: true }));
 
@@ -89,8 +80,7 @@ async function main() {
                 name: "iCloud MCP by The Fred Lab",
                 version: VER,
                 endpoints: {
-                    sse: "/sse",
-                    message: "/message",
+                    shttp: "/mcp/shttp"
                 }
             })
         );
