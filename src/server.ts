@@ -50,7 +50,7 @@ async function main() {
     app.use(securityMiddleware);
     app.use(express.json());
 
-    app.post("/shttp", async (req, res) => {
+    app.all("/mcp/shttp", async (req, res) => {
         const pokeUserId = req.headers["x-poke-user-id"] as string || "";
 
         await mcpContextStorage.run({ pokeUserId }, async () => {
@@ -68,9 +68,9 @@ async function main() {
         });
     });
 
-    app.get("/health",(req, res) => res.json({ ok: true }));
+    app.get("/mcp/health",(req, res) => res.json({ ok: true }));
 
-    app.get("/", (req, res) => {
+    app.get("/mcp", (req, res) => {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(
             JSON.stringify({
