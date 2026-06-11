@@ -69,7 +69,7 @@ async function main() {
 
     // Register shttp routes and assign context (poke user id)
     app.all("/mcp/shttp", handleMcpWithContext);
-    app.all("/mcp/shttp/*", handleMcpWithContext);
+    app.all("/mcp/shttp/{/*path}", handleMcpWithContext);
 
     app.get("/mcp/health",(req, res) => res.json({ ok: true }));
 
