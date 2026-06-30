@@ -91,6 +91,10 @@ async function main() {
         console.log("––––––");
         console.log(`[REQ] Method: ${req.method} | SID: ${sessionId || "New"}`);
 
+        if (req.method === "GET" && (!req.headers.accept || req.headers.accept === "*/*")) {
+            req.headers.accept = "application/json";
+        }
+
         if (sessionId && sessionId.length > 0) {
             const sessionData = activeSessions.get(sessionId);
 
