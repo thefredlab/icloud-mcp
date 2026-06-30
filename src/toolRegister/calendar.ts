@@ -42,7 +42,7 @@ export function registerCalendarTools(server: McpServer) {
 
             if (!pokeUserId) {
                 return {
-                    content: [{ type: "text" as const, text: "Missing X-Poke-User-Id header." }]
+                    content: [{ type: "text", text: "Missing X-Poke-User-Id header." }]
                 };
             }
 
@@ -96,7 +96,7 @@ export function registerCalendarTools(server: McpServer) {
 
             if (!pokeUserId) {
                 return {
-                    content: [{ type: "text" as const, text: "Missing X-Poke-User-Id header." }]
+                    content: [{ type: "text", text: "Missing X-Poke-User-Id header." }]
                 };
             }
 
@@ -152,7 +152,7 @@ export function registerCalendarTools(server: McpServer) {
 
             if (!pokeUserId) {
                 return {
-                    content: [{ type: "text" as const, text: "Missing X-Poke-User-Id header." }]
+                    content: [{ type: "text", text: "Missing X-Poke-User-Id header." }]
                 };
             }
 
@@ -212,7 +212,7 @@ export function registerCalendarTools(server: McpServer) {
 
             if (!pokeUserId) {
                 return {
-                    content: [{ type: "text" as const, text: "Missing X-Poke-User-Id header." }]
+                    content: [{ type: "text", text: "Missing X-Poke-User-Id header." }]
                 };
             }
 
@@ -264,7 +264,7 @@ export function registerCalendarTools(server: McpServer) {
 
             if (!pokeUserId) {
                 return {
-                    content: [{ type: "text" as const, text: "Missing X-Poke-User-Id header." }]
+                    content: [{ type: "text", text: "Missing X-Poke-User-Id header." }]
                 };
             }
 

@@ -32,3 +32,4 @@ export const DB_POOL_MAX = parseInt(process.env.DB_POOL_MAX || "30", 10);
 
 export const ENABLE_CALENDAR = process.env.ENABLE_CALENDAR === "true";
 export const ENABLE_CONTACTS = process.env.ENABLE_CONTACTS === "true";
+export const ENABLE_DEVTOOLS = process.env.ENABLE_DEVTOOLS === "true";
