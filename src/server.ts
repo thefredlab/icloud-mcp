@@ -84,7 +84,7 @@ async function main() {
 
     // assign poke user id
     const handleMcpWithContext = async (req: express.Request, res: express.Response) => {
-        let pokeUserId = req.headers["x-poke-user-id"] as string || "LOCAL-DEV",
+        let pokeUserId = req.headers["x-poke-user-id"] as string || "",
             sessionId = req.headers["mcp-session-id"] as string || "";
 
         let transport: StreamableHTTPServerTransport;
@@ -152,9 +152,14 @@ async function main() {
             console.error(`[SESSION_STOP] Error: ${error.message}`);
         });
 
-        await mcpContextStorage.run({ pokeUserId }, async () => {
-            await transport.handleRequest(req, res, req.body);
-        });
+        mcpContextStorage.run({ pokeUserId }, async () => {
+            transport.handleRequest(req, res).catch(err => {
+                console.error("[STREAM_ERROR]", err);
+            });
+        }).catch(err => {
+            console.error("[STREAM_ERROR] Error: " + err.message);
+            throw new Error("Error: " + err.message);
+        })
     };
 
     // Register shttp routes and assign context (poke user id)
