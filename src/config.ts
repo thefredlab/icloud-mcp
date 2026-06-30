@@ -23,6 +23,7 @@ if (!ENCRYPTION_KEY || Buffer.from(ENCRYPTION_KEY, "utf8").length !== 32) {
 
 export const PORT = Number(process.env.PORT ?? 8085);
 export const VER = Number(process.env.npm_package_version);
+export const DEV_MODE = process.env.DEV_MODE === "true";
 
 export const DB_HOST = process.env.DB_HOST ?? "";
 export const DB_USER = process.env.DB_USER ?? "";

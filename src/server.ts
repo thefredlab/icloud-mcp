@@ -16,6 +16,7 @@ import { securityMiddleware } from "./security";
 // Import toolRegister
 import { registerCalendarTools } from "./toolRegister/calendar";
 import { mcpContextStorage } from "./managers/context";
+import devLog from "./util/devLog";
 
 dotenv.config();
 
@@ -91,8 +92,19 @@ async function main() {
         console.log("––––––");
         console.log(`[REQ] Method: ${req.method} | SID: ${sessionId || "New"}`);
 
+        devLog("server.handleMcpWithContext", "req.headers", Array(req.headers));
+        devLog("server.handleMcpWithContext", "req.body", Array(req.body));
+
         if (req.method === "GET" && (!req.headers.accept || req.headers.accept === "*/*")) {
             req.headers.accept = "application/json";
+        }
+
+        if (req.method === "DELETE" && sessionId && activeSessions.has(sessionId)) {
+            const session = activeSessions.get(sessionId)!;
+
+            console.log(`[INFO] Closing session ${sessionId} for user ${session.pokeUserId}`);
+            await session.server.close();
+            activeSessions.delete(sessionId);
         }
 
         if (sessionId && sessionId.length > 0) {
