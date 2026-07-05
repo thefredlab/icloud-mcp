@@ -28,6 +28,7 @@ function getMCPServer() {
         title: "iCloud MCP for Poke made by The Fred Lab"
     });
 
+
     // Register server tools
     if (ENABLE_DEVTOOLS) {
         console.log("[!] Registering dev tools... [!]");
@@ -153,7 +154,7 @@ async function main() {
         });
 
         mcpContextStorage.run({ pokeUserId }, async () => {
-            transport.handleRequest(req, res).catch(err => {
+            transport.handleRequest(req, res, req.body).catch(err => {
                 console.error("[STREAM_ERROR]", err);
             });
         }).catch(err => {
