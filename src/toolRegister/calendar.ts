@@ -1,4 +1,5 @@
 import { z } from "zod";
+import catchError from "../managers/catchError";
 
 import {
     listEvents,
@@ -16,8 +17,6 @@ import {
 import { mcpContextStorage } from "../managers/context";
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { BuildEventOptions } from "../@types/calendar";
-import catchError from "../managers/catchError";
 
 export function registerCalendarTools(server: McpServer) {
     // List calendars
