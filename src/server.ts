@@ -4,7 +4,6 @@ import express from "express";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-
 import { PORT, VER, ENABLE_CALENDAR, ENABLE_CONTACTS } from "./config";
 
 // Import express tools & middlewares
@@ -62,8 +61,17 @@ async function main() {
     const handleMcpWithContext = async (req: express.Request, res: express.Response) => {
         const pokeUserId = req.headers["x-poke-user-id"] as string || "";
 
+        console.log("IJASFJHASF, handle")
+
         await mcpContextStorage.run({ pokeUserId }, async () => {
-            await transport.handleRequest(req, res, req.body);
+            try {
+                await transport.handleRequest(req, res, req.body);
+            } catch (error) {
+                console.error("Error handling request:", error);
+
+                if (!res.headersSent)
+                    res.status(500).json({ error: "Internal Server Error" });
+            }
         });
     };
 

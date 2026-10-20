@@ -5,8 +5,12 @@ export type BuildEventOptions = {
     summary: string;
     description?: string;
     location?: string;
-    start: Date;
-    end: Date;
+    /**
+     * The timezone of the event's start and end time/date. Must follow the IANA timezone database format (e.g., "America/New_York"). If not provided, the event will be treated as UTC.
+     */
+    timezone?: string;
+    start: string;
+    end: string;
 };
 
 export type SimpleEvent = {
