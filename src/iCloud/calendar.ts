@@ -85,13 +85,13 @@ export async function createEvents(calendarUrl: string, pokeUserId: string, even
     const client = await getDavClientForUser(pokeUserId, "caldav"),
         calendar = await findCalendarByUrl(calendarUrl, pokeUserId, client);
 
-    devLog("calendar.createEvent", "calendar, iCalData", calendar, iCalData);
-
     if (!calendar) throw new Error(`Calendar with URL "${calendarUrl}" not found`);
 
     const structuredContent: { success: boolean, uid: string, filename: string }[] = [];
 
     for (const event of events) {
+        devLog("calendar.createEvent", "calendar, iCalData", calendar, event.iCalData);
+
         await client.createCalendarObject({
             calendar,
             iCalString: event.iCalData,
