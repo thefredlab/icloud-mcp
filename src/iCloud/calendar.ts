@@ -3,6 +3,7 @@ import debugLog from "../util/debugLog";
 
 import type { DAVCalendar, DAVCalendarObject, DAVObject } from "tsdav";
 import type { SimpleEvent, PublicCalendar, EventsByCalendar } from "../@types/calendar";
+import devLog from "../util/devLog";
 
 async function fetchAllCalendars(pokeUserId: string, provClient?: Awaited<ReturnType<typeof getDavClientForUser>>): Promise<DAVCalendar[]> {
     const client = provClient ?? await getDavClientForUser(pokeUserId, "caldav"),
@@ -20,6 +21,8 @@ async function findCalendarByUrl(url: string, pokeUserId: string, client?: Await
 
 export async function listCalendars(pokeUserId: string, client?: Awaited<ReturnType<typeof getDavClientForUser>>): Promise<PublicCalendar[]> {
     const calendars = await fetchAllCalendars(pokeUserId, client);
+
+    devLog("calendar.listCalendars", "calendars", calendars);
 
     return calendars.map((calendar) => {
         const {
@@ -46,6 +49,8 @@ export async function listEvents(fromISO: string, toISO: string, useCalendars: "
 
     const calendarURLs = useCalendars === "all" ? calendars.map(c => c.url) : useCalendars,
         result: EventsByCalendar[] = [];
+
+    devLog("calendar.listEvents", "calendarURLs", calendarURLs);
 
     await Promise.all(
         calendarURLs.map(async (calendarUrl) => {
@@ -79,6 +84,8 @@ export async function listEvents(fromISO: string, toISO: string, useCalendars: "
 export async function createEvents(calendarUrl: string, pokeUserId: string, events: { iCalData: string, uid: string, filename: string }[]): Promise<{ success: boolean, uid: string, filename: string }[]> {
     const client = await getDavClientForUser(pokeUserId, "caldav"),
         calendar = await findCalendarByUrl(calendarUrl, pokeUserId, client);
+
+    devLog("calendar.createEvent", "calendar, iCalData", calendar, iCalData);
 
     if (!calendar) throw new Error(`Calendar with URL "${calendarUrl}" not found`);
 

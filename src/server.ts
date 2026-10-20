@@ -1,10 +1,13 @@
 import dotenv from "dotenv";
-
 import express from "express";
+import crypto from "node:crypto";
+
+import { z } from "zod";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { PORT, VER, ENABLE_CALENDAR, ENABLE_CONTACTS } from "./config";
+
+import { PORT, VER, ENABLE_CALENDAR, ENABLE_CONTACTS, ENABLE_DEVTOOLS } from "./config";
 
 // Import express tools & middlewares
 import { requestLogger } from "./logger";
@@ -13,35 +16,66 @@ import { securityMiddleware } from "./security";
 // Import toolRegister
 import { registerCalendarTools } from "./toolRegister/calendar";
 import { mcpContextStorage } from "./managers/context";
+import devLog from "./util/devLog";
 
 dotenv.config();
 
 // Create server
-const server = new McpServer({
-    name: "icloud-mcp",
-    version: VER.toString(),
-    title: "iCloud MCP for Poke made by The Fred Lab"
-});
+function getMCPServer() {
+    const server = new McpServer({
+        name: "icloud-mcp",
+        version: VER.toString(),
+        title: "iCloud MCP for Poke made by The Fred Lab"
+    });
 
-console.log("Checking on tool registration...");
 
-// Register server tools
-if (ENABLE_CALENDAR) {
-    console.log("Registering calendar tools...")
-    registerCalendarTools(server);
-} else
-    console.log("Calendar tools not enabled. Skipping tool registration.");
+    // Register server tools
+    if (ENABLE_DEVTOOLS) {
+        console.log("[!] Registering dev tools... [!]");
 
-if (ENABLE_CONTACTS) {
-    console.log("Contacts tools enabled but not registered. Tool is under development and not yet available.");
-} else
-    console.log("Contacts tools not enabled. Skipping tool registration.");
+        server.registerTool("dev-test-tool", {
+            description: "Returns 'hello world!'",
+            outputSchema: z.object({
+                response: z.string()
+            })
+        }, () => {
+            return {
+                content: [{ type: "text", text: "hello world!" }],
+                structuredContent: {
+                    response: "hello world!"
+                }
+            };
+        });
+    }
 
-console.log("Tool registration finished.");
+    let logMsg = "";
+
+    if (ENABLE_CALENDAR) {
+        console.log("Registering calendar tools...")
+        registerCalendarTools(server);
+    } else
+        logMsg += "Calendar tools not enabled. ";
+
+    if (ENABLE_CONTACTS) {
+        console.log("Contacts tools enabled but not registered. Tool is under development and not yet available.");
+    } else
+        logMsg += "Contacts tools not enabled. ";
+
+    if (logMsg.length > 0)
+        console.log(logMsg + "Skipping tool registration.");
+
+    return server;
+}
 
 // Set up server
 async function main() {
     const app = express();
+
+    const activeSessions = new Map<string, {
+        transport: StreamableHTTPServerTransport,
+        server: McpServer,
+        pokeUserId: string
+    }>();
 
     // Log requests
     app.use(requestLogger);
@@ -49,30 +83,84 @@ async function main() {
     app.use(securityMiddleware);
     app.use(express.json());
 
-    const transport = new StreamableHTTPServerTransport({
-        // @ts-ignore
-        endpoint: "/mcp/shttp",
-        enableJsonResponse: true
-    });
-
-    await server.connect(transport);
-
     // assign poke user id
     const handleMcpWithContext = async (req: express.Request, res: express.Response) => {
-        const pokeUserId = req.headers["x-poke-user-id"] as string || "";
+        let pokeUserId = req.headers["x-poke-user-id"] as string || "",
+            sessionId = req.headers["mcp-session-id"] as string || "";
 
-        console.log("IJASFJHASF, handle")
+        let transport: StreamableHTTPServerTransport;
 
-        await mcpContextStorage.run({ pokeUserId }, async () => {
-            try {
-                await transport.handleRequest(req, res, req.body);
-            } catch (error) {
-                console.error("Error handling request:", error);
+        console.log("––––––");
+        console.log(`[REQ] Method: ${req.method} | SID: ${sessionId || "New"}`);
 
-                if (!res.headersSent)
-                    res.status(500).json({ error: "Internal Server Error" });
+        devLog("server.handleMcpWithContext", "req.headers", Array(req.headers));
+        devLog("server.handleMcpWithContext", "req.body", Array(req.body));
+
+        if (req.method === "GET" && (!req.headers.accept || req.headers.accept === "*/*")) {
+            req.headers.accept = "application/json";
+        }
+
+        if (req.method === "DELETE" && sessionId && activeSessions.has(sessionId)) {
+            const session = activeSessions.get(sessionId)!;
+
+            console.log(`[INFO] Closing session ${sessionId} for user ${session.pokeUserId}`);
+            await session.server.close();
+            activeSessions.delete(sessionId);
+        }
+
+        if (sessionId && sessionId.length > 0) {
+            const sessionData = activeSessions.get(sessionId);
+
+            if (!sessionData) {
+                return res.status(404).json({ error: "Session expired or not found" });
             }
+
+            if (pokeUserId !== sessionData.pokeUserId) {
+                return res.status(403).json({ error: "Poke user ID mismatch" });
+            }
+
+            transport = sessionData.transport;
+        } else {
+            const server = getMCPServer();
+
+            transport = new StreamableHTTPServerTransport({
+                // @ts-ignore
+                endpoint: "/mcp/shttp",
+                enableJsonResponse: true,
+                sessionIdGenerator: () => crypto.randomUUID(),
+                onsessioninitialized: sid => {
+                    // store the transport by session ID when the session is initialized
+                    sessionId = sid;
+                    console.log("[SESSION_START]", `New session (${sid}) for user (${pokeUserId}). Active: ${activeSessions.size}`);
+                    activeSessions.set(sid, {
+                        transport,
+                        server,
+                        pokeUserId
+                    });
+                }
+            });
+
+            await server.connect(transport);
+
+            req.on("close", async () => {
+                await transport.close();
+                activeSessions.delete(sessionId);
+                console.log("[SESSION_STOP]", `Session ${sessionId} removed. Remaining: ${activeSessions.size}`);
+            });
+        }
+
+        req.on("error", async (error) => {
+            console.error(`[SESSION_STOP] Error: ${error.message}`);
         });
+
+        mcpContextStorage.run({ pokeUserId }, async () => {
+            transport.handleRequest(req, res, req.body).catch(err => {
+                console.error("[STREAM_ERROR]", err);
+            });
+        }).catch(err => {
+            console.error("[STREAM_ERROR] Error: " + err.message);
+            throw new Error("Error: " + err.message);
+        })
     };
 
     // Register shttp routes and assign context (poke user id)
