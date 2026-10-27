@@ -1,26 +1,27 @@
 import { getDavClientForUser } from "./iCloudClient";
 import debugLog from "../util/debugLog";
+import devLog from "../util/devLog";
 
 import type { DAVCalendar, DAVCalendarObject, DAVObject } from "tsdav";
 import type { SimpleEvent, PublicCalendar, EventsByCalendar } from "../@types/calendar";
-import devLog from "../util/devLog";
+import type { User } from "../@types/database";
 
-async function fetchAllCalendars(pokeUserId: string, provClient?: Awaited<ReturnType<typeof getDavClientForUser>>): Promise<DAVCalendar[]> {
-    const client = provClient ?? await getDavClientForUser(pokeUserId, "caldav"),
+async function fetchAllCalendars({pokeUserId, user}: { pokeUserId: string, user?: User }, provClient?: Awaited<ReturnType<typeof getDavClientForUser>>): Promise<DAVCalendar[]> {
+    const client = provClient ?? await getDavClientForUser({pokeUserId, user}, "caldav"),
         calendars = await client.fetchCalendars();
 
     if (!calendars || calendars.length === 0)
-        throw new Error("Could not find any calendars on iCloud");
+        throw new Error("No calendars found on iCloud");
 
     return calendars;
 }
 
-async function findCalendarByUrl(url: string, pokeUserId: string, client?: Awaited<ReturnType<typeof getDavClientForUser>>): Promise<DAVCalendar | undefined> {
-    return (await fetchAllCalendars(pokeUserId, client)).find((c) => c.url === url);
+async function findCalendarByUrl(url: string, {pokeUserId, user}: { pokeUserId: string, user?: User }, client?: Awaited<ReturnType<typeof getDavClientForUser>>): Promise<DAVCalendar | undefined> {
+    return (await fetchAllCalendars({pokeUserId, user}, client)).find((c) => c.url === url);
 }
 
-export async function listCalendars(pokeUserId: string, client?: Awaited<ReturnType<typeof getDavClientForUser>>): Promise<PublicCalendar[]> {
-    const calendars = await fetchAllCalendars(pokeUserId, client);
+export async function listCalendars({pokeUserId, user}: { pokeUserId: string, user?: User }, client?: Awaited<ReturnType<typeof getDavClientForUser>>): Promise<PublicCalendar[]> {
+    const calendars = await fetchAllCalendars({pokeUserId, user}, client);
 
     devLog("calendar.listCalendars", "calendars", calendars);
 
@@ -43,9 +44,9 @@ export async function listCalendars(pokeUserId: string, client?: Awaited<ReturnT
     });
 }
 
-export async function listEvents(fromISO: string, toISO: string, useCalendars: "all" | string[], pokeUserId: string): Promise<EventsByCalendar[]> {
-    const client = await getDavClientForUser(pokeUserId, "caldav"),
-        calendars = await listCalendars(pokeUserId, client);
+export async function listEvents(fromISO: string, toISO: string, useCalendars: "all" | string[], {pokeUserId, user}: { pokeUserId: string, user?: User }): Promise<EventsByCalendar[]> {
+    const client = await getDavClientForUser({pokeUserId, user}, "caldav"),
+        calendars = await listCalendars({pokeUserId, user}, client);
 
     const calendarURLs = useCalendars === "all" ? calendars.map(c => c.url) : useCalendars,
         result: EventsByCalendar[] = [];
@@ -81,9 +82,9 @@ export async function listEvents(fromISO: string, toISO: string, useCalendars: "
     return result;
 }
 
-export async function createEvents(calendarUrl: string, pokeUserId: string, events: { iCalData: string, uid: string, filename: string }[]): Promise<{ success: boolean, uid: string, filename: string }[]> {
-    const client = await getDavClientForUser(pokeUserId, "caldav"),
-        calendar = await findCalendarByUrl(calendarUrl, pokeUserId, client);
+export async function createEvents(calendarUrl: string, {pokeUserId, user}: { pokeUserId: string, user?: User }, events: { iCalData: string, uid: string, filename: string }[]): Promise<{ success: boolean, uid: string, filename: string }[]> {
+    const client = await getDavClientForUser({pokeUserId, user}, "caldav"),
+        calendar = await findCalendarByUrl(calendarUrl, {pokeUserId, user}, client);
 
     if (!calendar) throw new Error(`Calendar with URL "${calendarUrl}" not found`);
 
@@ -118,8 +119,8 @@ export async function createEvents(calendarUrl: string, pokeUserId: string, even
     return structuredContent;
 }
 
-export async function updateEvents(url: string, pokeUserId: string, events: { iCalData: string, etag?: string }[]): Promise<{ success: boolean, etag?: string, iCalData: string }[]> {
-    const client = await getDavClientForUser(pokeUserId, "caldav"),
+export async function updateEvents(url: string, {pokeUserId, user}: { pokeUserId: string, user?: User }, events: { iCalData: string, etag?: string }[]): Promise<{ success: boolean, etag?: string, iCalData: string }[]> {
+    const client = await getDavClientForUser({pokeUserId, user}, "caldav"),
         structuredContent: { success: boolean, etag?: string, iCalData: string }[] = [];
 
     for (const event of events) {
@@ -144,8 +145,8 @@ export async function updateEvents(url: string, pokeUserId: string, events: { iC
     return structuredContent;
 }
 
-export async function deleteEvents(url: string[], pokeUserId: string): Promise<{ success: boolean; url: string }[]> {
-    const client = await getDavClientForUser(pokeUserId, "caldav"),
+export async function deleteEvents(url: string[], {pokeUserId, user}: { pokeUserId: string, user?: User }): Promise<{ success: boolean; url: string }[]> {
+    const client = await getDavClientForUser({pokeUserId, user}, "caldav"),
         structuredContent: { success: boolean, url: string }[] = [];
 
     for (const singleURL of url) {

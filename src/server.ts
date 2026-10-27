@@ -11,12 +11,14 @@ import { PORT, VER, ENABLE_CALENDAR, ENABLE_CONTACTS, ENABLE_DEVTOOLS } from "./
 
 // Import express tools & middlewares
 import { requestLogger } from "./logger";
-import { securityMiddleware } from "./security";
+import { securityMiddleware, apiKeyAuthMiddleware } from "./security";
 
 // Import toolRegister
 import { registerCalendarTools } from "./toolRegister/calendar";
 import { mcpContextStorage } from "./managers/context";
 import devLog from "./util/devLog";
+
+import type { User } from "./@types/database";
 
 dotenv.config();
 
@@ -82,10 +84,14 @@ async function main() {
     // Check for valid origin, host header, and user agent
     app.use(securityMiddleware);
     app.use(express.json());
+    // Authenticate the request against a user's API key
+    app.use(apiKeyAuthMiddleware);
 
     // assign poke user id
     const handleMcpWithContext = async (req: express.Request, res: express.Response) => {
-        let pokeUserId = req.headers["x-poke-user-id"] as string || "",
+        const user = (req as express.Request & { authenticatedUser?: User }).authenticatedUser!;
+
+        let pokeUserId = user.pokeUserId,
             sessionId = req.headers["mcp-session-id"] as string || "";
 
         let transport: StreamableHTTPServerTransport;
@@ -153,7 +159,7 @@ async function main() {
             console.error(`[SESSION_STOP] Error: ${error.message}`);
         });
 
-        mcpContextStorage.run({ pokeUserId }, async () => {
+        mcpContextStorage.run({ pokeUserId, user }, async () => {
             transport.handleRequest(req, res, req.body).catch(err => {
                 console.error("[STREAM_ERROR]", err);
             });

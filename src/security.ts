@@ -1,35 +1,83 @@
 import { ALLOWED_HOSTS } from "./config";
 
+import { db } from "./managers/database";
+
 import type { Request, Response, NextFunction } from "express";
+import type { User } from "./@types/database";
 
 export function securityMiddleware(
-    req: Request,
-    res: Response,
-    next: NextFunction
+   req: Request,
+   res: Response,
+   next: NextFunction
 ) {
-    const hostHeader = (req.headers.host ?? "").toLowerCase();
+   const hostHeader = (req.headers.host ?? "").toLowerCase();
 
-    // Check host header
-    if (ALLOWED_HOSTS.size > 0 && hostHeader) {
-        if (!ALLOWED_HOSTS.has(hostHeader)) {
-            return res
-                .status(403)
-                .type("text/plain")
-                .send(`Forbidden host: ${hostHeader}`);
-        }
-    }
+   // Check host header
+   if (ALLOWED_HOSTS.size > 0 && hostHeader) {
+      if (!ALLOWED_HOSTS.has(hostHeader)) {
+         return res
+            .status(403)
+            .type("text/plain")
+            .send(`Forbidden host: ${hostHeader}`);
+      }
+   }
 
-    // Check user agent header
-    // TODO: check Poke's user agent first
-    // const userAgent = req.headers["user-agent"]?.toLowerCase() as string | undefined;
-    //
-    // if (userAgent) {
-    //     if (!ALLOWED_USER_AGENTS.has(userAgent)) {
-    //         return res
-    //             .status(403)
-    //             .type("text/plain")
-    //             .send(`Forbidden origin: ${origin}`);
-    //     }
-    // }
-    next();
+   // Check user agent header
+   // TODO: check Poke's user agent first
+   // const userAgent = req.headers["user-agent"]?.toLowerCase() as string | undefined;
+   //
+   // if (userAgent) {
+   //     if (!ALLOWED_USER_AGENTS.has(userAgent)) {
+   //         return res
+   //             .status(403)
+   //             .type("text/plain")
+   //             .send(`Forbidden origin: ${origin}`);
+   //     }
+   // }
+   next();
+}
+
+export async function apiKeyAuthMiddleware(
+   req: Request,
+   res: Response,
+   next: NextFunction
+) {
+   const authHeader = req.headers["authorization"] as string || "";
+   const [scheme, token] = authHeader.split(" ");
+
+   const apiKey = scheme?.toLowerCase() === "bearer" ? (token || "").trim() : "",
+      pokeUserId = req.headers["x-poke-user-id"] as string || "";
+
+   if (!apiKey) {
+      return res.status(401).json({error: "Missing API key"});
+   }
+
+   if (!pokeUserId) {
+      return res.status(401).json({error: "Missing Poke user id"});
+   }
+
+   const user: User | undefined = await db("users").where({apiKey, pokeUserId}).first();
+
+   if (!user) {
+      const apiKeyExists = await db("api_keys").where({ apiKey }).andWhereRaw("createdAt >= NOW() - INTERVAL 30 MINUTE").first();
+
+      if (!apiKeyExists) {
+         return res.status(401).json({error: "Invalid API key"});
+      }
+
+      // Connect the API-Key to the user (new user-setup)
+      await db("users").insert({pokeUserId, apiKey});
+      await db("api_keys").where({apiKey}).delete();
+
+      try {
+         (req as Request & { authenticatedUser?: User }).authenticatedUser = await db("users").where({apiKey, pokeUserId}).first();
+         return next();
+      } catch (err) {
+         console.error("Error fetching user after inserting:", err);
+         return res.status(500).json({error: "Internal server error"});
+      }
+   }
+
+   (req as Request & { authenticatedUser?: User }).authenticatedUser = user;
+   next();
 }

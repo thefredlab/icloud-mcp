@@ -7,10 +7,14 @@ import { decryptPassword } from "../managers/crypto";
 import logAndCheckUsage from "../managers/logUsage";
 import devLog from "../util/devLog";
 
+import type { User, UsersICloudConnection } from "../@types/database";
+
 dotenv.config();
 
-export async function getDavClientForUser(pokeUserId: string, server: "caldav" | "carddav" = "caldav") {
-    const user = await db("users").where({ pokeUserId }).first();
+export async function getDavClientForUser({pokeUserId, user}: { pokeUserId: string, user?: User }, server: "caldav" | "carddav" = "caldav") {
+    if (!user) {
+       user = await db("users").where({pokeUserId}).first();
+    }
 
     devLog("iCloudClient.getDavClientForUser", "pokeUserId, server, user", { pokeUserId, server, user });
 
@@ -22,7 +26,7 @@ export async function getDavClientForUser(pokeUserId: string, server: "caldav" |
         throw new Error("USAGE_LIMIT");
     }
 
-    const iCloudConnection = await db("icloud_connections").where({ userId: user.id }).first();
+    const iCloudConnection: UsersICloudConnection = await db("users_icloud_connections").where({ userId: user.userId }).first();
 
     devLog("iCloudClient.getDavClientForUser", "iCloudConnection", { iCloudConnection });
 
@@ -30,7 +34,7 @@ export async function getDavClientForUser(pokeUserId: string, server: "caldav" |
         throw new Error("ICLOUD_NOT_CONNECTED");
     }
 
-    const plainPassword = decryptPassword(iCloudConnection.encryptedAppPassword, iCloudConnection.iv),
+    const plainPassword = decryptPassword(iCloudConnection.appleAppPassword, iCloudConnection.appleAppPasswordIVHex),
         appleMail = iCloudConnection.appleMail;
 
     return await createDAVClient({
@@ -42,10 +46,4 @@ export async function getDavClientForUser(pokeUserId: string, server: "caldav" |
         authMethod: "Basic",
         defaultAccountType: server,
     });
-}
-
-export function getFilenameFromUrl(url: string): string {
-    const parts = url.split("/");
-
-    return parts[parts.length - 1];
 }
