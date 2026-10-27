@@ -56,28 +56,30 @@ export async function apiKeyAuthMiddleware(
       return res.status(401).json({error: "Missing Poke user id"});
    }
 
-   const user: User | undefined = await db("users").where({apiKey, pokeUserId}).first();
+   try {
+      const user: User | undefined = await db("users").where({apiKey, pokeUserId}).first();
 
-   if (!user) {
-      const apiKeyExists = await db("api_keys").where({ apiKey }).andWhereRaw("createdAt >= NOW() - INTERVAL 30 MINUTE").first();
+      if (!user) {
+         const apiKeyExists = await db("api_keys").where({ apiKey }).andWhereRaw("createdAt >= NOW() - INTERVAL 30 MINUTE").first();
 
-      if (!apiKeyExists) {
-         return res.status(401).json({error: "Invalid API key"});
-      }
+         if (!apiKeyExists) {
+            return res.status(401).json({error: "Invalid API key"});
+         }
 
-      // Connect the API-Key to the user (new user-setup)
-      await db("users").insert({pokeUserId, apiKey});
-      await db("api_keys").where({apiKey}).delete();
+         // Connect the API-Key to the user (new user-setup)
+         await db("users").insert({pokeUserId, apiKey});
+         await db("api_keys").where({apiKey}).delete();
 
-      try {
+
+
          (req as Request & { authenticatedUser?: User }).authenticatedUser = await db("users").where({apiKey, pokeUserId}).first();
          return next();
-      } catch (err) {
-         console.error("Error fetching user after inserting:", err);
-         return res.status(500).json({error: "Internal server error"});
       }
-   }
 
-   (req as Request & { authenticatedUser?: User }).authenticatedUser = user;
-   next();
+      (req as Request & { authenticatedUser?: User }).authenticatedUser = user;
+      next();
+   } catch (err) {
+      console.error("Database error during authentication:", err);
+      return res.status(503).json({error: "Service temporarily unavailable, please try again later"});
+   }
 }
