@@ -22,18 +22,6 @@ export function securityMiddleware(
       }
    }
 
-   // Check user agent header
-   // TODO: check Poke's user agent first
-   // const userAgent = req.headers["user-agent"]?.toLowerCase() as string | undefined;
-   //
-   // if (userAgent) {
-   //     if (!ALLOWED_USER_AGENTS.has(userAgent)) {
-   //         return res
-   //             .status(403)
-   //             .type("text/plain")
-   //             .send(`Forbidden origin: ${origin}`);
-   //     }
-   // }
    next();
 }
 
