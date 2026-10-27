@@ -9,9 +9,11 @@ export const db = knex({
             user: DB_USER,
             password: DB_PASSWORD,
             database: DB_DATABASE,
+            connectTimeout: 5000
         },
         pool: {
             min: 0,
-            max: DB_POOL_MAX
+            max: DB_POOL_MAX,
+            acquireTimeoutMillis: 5000
         }
     });
