@@ -21,7 +21,7 @@ export function registerSetupTools(server: McpServer) {
          };
       }
 
-      const setupKey = await db("users").where({ pokeUserId, userId: user?.userId }).pluck("setupKey").first();
+      const setupKey = (await db("users").where({ pokeUserId, userId: user?.userId }).first())?.setupKey;
 
       if (!setupKey) {
          return {
