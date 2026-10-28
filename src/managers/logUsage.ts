@@ -1,6 +1,6 @@
 import { db } from "./database";
 
-export default async function logAndCheckUsage(userId: number, maxLimit?: number | null) {
+export default async function logAndCheckUsage(userId: bigint, maxLimit?: number | null) {
     const currentPeriod = new Date().toISOString().slice(0, 7) + "-01 00:00:00";
 
     const usage = await db("users_usage")

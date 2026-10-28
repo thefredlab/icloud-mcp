@@ -22,7 +22,7 @@ export async function getDavClientForUser({pokeUserId, user}: { pokeUserId: stri
         throw new Error("USER_NOT_FOUND");
     }
 
-    if (!await logAndCheckUsage(user.id, user.usageLimit)) {
+    if (!await logAndCheckUsage(user.userId, user.usageLimit)) {
         throw new Error("USAGE_LIMIT");
     }
 
