@@ -1,6 +1,4 @@
 export interface User {
-   /* auto-incrementing primary key */
-   id: number;
    /* Unique userId */
    userId: bigint;
    pokeUserId: string;
