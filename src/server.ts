@@ -15,6 +15,7 @@ import { securityMiddleware, apiKeyAuthMiddleware } from "./security";
 
 // Import toolRegister
 import { registerCalendarTools } from "./toolRegister/calendar";
+import { registerSetupTools } from "./toolRegister/setup";
 import { mcpContextStorage } from "./managers/context";
 import devLog from "./util/devLog";
 
@@ -52,8 +53,11 @@ function getMCPServer() {
 
     let logMsg = "";
 
+    console.log("Registering setup tools...");
+    registerSetupTools(server);
+
     if (ENABLE_CALENDAR) {
-        console.log("Registering calendar tools...")
+        console.log("Registering calendar tools...");
         registerCalendarTools(server);
     } else
         logMsg += "Calendar tools not enabled. ";

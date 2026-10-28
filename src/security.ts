@@ -1,6 +1,7 @@
 import { ALLOWED_HOSTS } from "./config";
 
 import { db } from "./managers/database";
+import createAndApplySetupKey from "./util/createSetupKey";
 
 import type { Request, Response, NextFunction } from "express";
 import type { User } from "./@types/database";
@@ -58,9 +59,17 @@ export async function apiKeyAuthMiddleware(
          await db("users").insert({pokeUserId, apiKey});
          await db("api_keys").where({apiKey}).delete();
 
+         const newUser: User | undefined = await db("users").where({apiKey, pokeUserId}).first();
 
+         if (!newUser) {
+            return res.status(500).json({error: "Failed to create new user"});
+         }
 
-         (req as Request & { authenticatedUser?: User }).authenticatedUser = await db("users").where({apiKey, pokeUserId}).first();
+         createAndApplySetupKey({ pokeUserId, user: newUser }).catch(err => {
+            console.error("Error creating setup key for new user:", err);
+         });
+
+         (req as Request & { authenticatedUser?: User }).authenticatedUser = newUser;
          return next();
       }
 
