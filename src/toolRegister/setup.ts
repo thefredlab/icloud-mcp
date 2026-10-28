@@ -16,7 +16,7 @@ export function registerSetupTools(server: McpServer) {
          pokeUserId = context?.pokeUserId,
          user = context?.user;
 
-      let structuredContent = {};
+      let structuredContent;
 
       if (!pokeUserId) {
          structuredContent = {
