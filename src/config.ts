@@ -26,6 +26,7 @@ export const VER = Number(process.env.npm_package_version);
 export const DEV_MODE = process.env.DEV_MODE === "true";
 
 export const DB_HOST = process.env.DB_HOST ?? "";
+export const DB_PORT = parseInt(process.env.DB_PORT ?? "3306", 10);
 export const DB_USER = process.env.DB_USER ?? "";
 export const DB_PASSWORD = process.env.DB_PASSWORD ?? "";
 export const DB_DATABASE = process.env.DB_DATABASE ?? "";
