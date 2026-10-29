@@ -1,14 +1,14 @@
 # iCloud MCP
 
-An open-source iCloud Model Context Protocol (MCP) server and Next.js web application designed to seamlessly connect Apple Calendar functionality with Poke AI over messaging interfaces.
+An open-source iCloud Model Context Protocol (MCP) server designed to seamlessly connect Apple Calendar functionality with [Poke](https://poke.com) over messaging interfaces.
 
 ## Getting Started & Setup
 
-The easiest way to get your server running is by using our dedicated web interface. You can start the automated setup process and find the complete step-by-step documentation directly on the website:
+The easiest way to connect [Poke]([Poke](https://poke.com)) to your iCloud account is to use the dedicated web interface. You can start the automated setup process and find the complete step-by-step documentation directly on the website:
 
 👉 **[poke.thefredlab.com](https://poke.thefredlab.com)**
 
-The portal will guide you through the necessary steps to link your iCloud account, generate the required app-specific passwords, and connect the MCP server to your AI environment.
+The website will guide you through the necessary steps to link your iCloud account, generate the required app-specific passwords, and connect the MCP server to [Poke]([Poke](https://poke.com)).
 
 ## Features
 
@@ -20,7 +20,7 @@ The portal will guide you through the necessary steps to link your iCloud accoun
 
 ## Local Development
 
-If you want to contribute to the project or run the setup portal locally:
+If you want to contribute to the project or run the app locally:
 
 1. Clone the repository:
    ```bash
